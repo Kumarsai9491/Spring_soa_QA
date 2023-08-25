@@ -4,22 +4,159 @@ For this we can were going to write triger, because contact is not necessary to 
 
 step 1: Create an number field in account object with label  as Number of Contacts and APi name is Number_of_Contacts__c.
 Step 2: Use an existing trigger on contact if is present or create new trigger on contact.
-Step 3: Write our logic in trigger handler which will be called in after update and after insert of contact record.
+Step 3: Write our logic in trigger handler which will be called in after update and after insert and after delete of contact record.
 Step 4 : updat the Number of Contacts value based on records availability under that account.
 
 Writing trigger on contact(assuming custom trigger is not present)
-trigger ContactTrigger on Contact(after insert, after update){
+trigger ContactTrigger on Contact(after insert, after update,after delete){
   if(trigger.isAfter){
       if(trigger.isUpdate){
-          contactTriggerHandler.afterUpdate(trigger.oldMap.values(),trigger.newMap.values());
+          contactTriggerHandler.afterUpdate(trigger.oldMap,trigger.newMap);
       }
       if(trigger.isInsert){
           contactTriggerHandler.afterInsert(Trigger.newMap.values());
       }
+    if(trigger.isDelete){
+          contactTriggerHandler.afterdelete(Trigger.old);
+      }
+     
   }
+}
+
+Public class contactTriggerHandler {
+    
+    public static void afterInsert(List<Contacts> listOfContacts){
+        Set<Id> accountIds = new Set<Id>();
+        for(Contact eachCon : listOfContacts)
+        {
+            accountIds.add(eachCon.AccountId);
+        }
+        if(!accountIds.isEmpty()){
+            updatedAccounts(accountIds);//to update the respective accounts
+        }
+    }
+    
+    public static void afterUpdate(Map<id, Contacts> mapOfOldContacts, Map<id, Contacts> mapOfNewContacts){
+        Set<Id> accountIds = new Set<Id>();
+        for(Contact eachCon : mapOfNewContacts.values())
+        {
+            if(eachCon.accountId != mapOfOldContacts.get(eachCon).accountId)//if accounts are changed..
+            {
+                accountIds.add(eachCon.AccountId);
+                accountIds.add(mapOfOldContacts.get(eachCon).accountId);
+            }
+        }
+        if(!accountIds.isEmpty()){
+            updatedAccounts(accountIds);//to update the respective accounts
+        }
+    }
+    Public Static void afterDelete (list<contacts> listofDeletedContacts){
+        Set<Id> accountIds = new Set<Id>();
+        for(Contact eachCon : listofDeletedContacts)
+        {
+            accountIds.add(eachCon.AccountId);
+        }
+        if(!accountIds.isEmpty()){
+            updatedAccounts(accountIds);//to update the respective accounts
+        }
+    }
+    // function to handle all the account updates..
+    Public Static Void updatedAccounts(Set<id> AccountIds)
+    {
+        if(!AccountIds.isEmpty()){
+            List<Account> accListtoUpdateAccounts = new List<Account>();
+            List<Account> accountsofrelatedCon = [Select Id, Number_of_Contacts__c, (Select Id from Contacts) FROM Account Where id IN : AccountIds]; //getting all related contacts based on account ids and updating the number of contcs basedon contacts size
+            
+            for (Account eachAcc : accountsofrelatedCon){
+                eachAcc.Number_of_Contacts__c  = eachAcc.Contacts.size();
+                accListtoUpdateAccounts.add(eachAcc);
+            }
+            
+            if(!accListtoUpdateAccounts.isEmpty()){
+                Update accListtoUpdateAccounts;  
+            }
+        }
+    }
 }
 
 
  2. Build a basic lightning component that can query a list of 10 most recently created accounts and display it using a lightning app. 
+
+step1: create an new aura component named recentAccounts.
+step2 : edit any lighting page or create an new one and drag it up into the page and activate it.
+
+Component://displaying acount id and account name
+<aura:component controller="recentAccount" implements="force:appHostable,flexipage:availableForAllPageTypes,force:hasRecordId,force:lightningQuickAction" access="global" >
+    
+    <aura:attribute name="PageHeading" type="String" default="Recent Acocunts" />
+    <aura:attribute name="accountData" type="List"/>
+    <aura:handler name="init" value="{!this}" action="{!c.doinit}" />
+    
+    <div class=" slds-page-header slds-text-heading--large slds-align--absolute-center">       
+        {!v.PageHeading}              
+    </div>
+    <div class="slds-section slds-is-open">
+        <br/>
+        <table class="slds-table slds-table--bordered slds-table--striped slds-table--cell-buffer slds-table--fixed-layout">
+              <thead>
+                  <tr class="slds-text-heading--label">
+                      <th scope="col"><div class="slds-truncate" title="Account ID">Account ID</div></th>
+                      <th scope="col"><div class="slds-truncate" title="Account Name">Account Name</div></th>
+                  </tr>
+              </thead>
+            <tbody>
+               <aura:iteration items="{!v.accountData}" var="account">
+                  <tr>
+                  <td><div class="slds-truncate" title="{!account.Id}">{!account.Id}</div></td>
+                  <td><div class="slds-truncate" title="{!account.Name}">{!account.Name}</div></td> 
+                  </tr>
+              </aura:iteration>
+          </tbody>
+        </table>
+    </div>
+    <br/>
+</aura:component>
+
+js.contoller: 
+//getting all this accounts from apex controller and if return any error and priting those errors.
+({//Nosonar
+    doinit : function(component, event, helper) {
+        var action1 = component.get('c.returnAccounts');
+        action.setCallback(this, function(response){
+            var state = response.getState();
+            if(state === "SUCCESS"){
+                var returnValue= response.getReturnValue();
+                component.set('v.accountData', returnValue);
+            }
+            else if(state === "ERROR") {
+                var errors = response.getError();
+                if(errors){
+                    if(errors[0].message){
+                        console.log("Error Message: " + errors[0].message);
+                    }
+                }
+            }
+        });
+        $A.enqueueAction(action1);
+    }
+
+controller:
+public class recentAccount{    
+    @AuraEnabled
+    public static List<Account> returnAccounts (){
+        return [SELECT Id, Name FROM Account ORDER BY createdDate DESC LIMIT 10]; // to query the latest date of created accounts
+    }    
+}
+
+
+create an application for this 
+
+Application:
+<aura:application extends="force:slds" >
+ 
+<c:recentAccounts />
+ 
+</aura:application>
+
 
  3. Make a basic http callout and print the result using system.debug
