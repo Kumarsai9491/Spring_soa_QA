@@ -160,3 +160,22 @@ Application:
 
 
  3. Make a basic http callout and print the result using system.debug
+https://postman-echo.com/get?foo1=bar1&foo2=bar2
+
+step 1: create an class and use get method for the same.
+public class httpMethodss{
+   public static void simpleCallout(){
+     HttpRequest request = new HttpRequest();
+     request.setEndpoint('hhttps://postman-echo.com/get?foo1=bar1&foo2=bar2');
+     request.setMethod('GET');
+     Http http = new Http();
+     HttpResponse response = http.send(request);
+     if (response.getStatusCode() == 200) {
+        String body = response.getBody();
+        system.debug('Our response: ' + body);
+     }
+ }
+}
+
+
+
