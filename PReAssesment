@@ -1,0 +1,25 @@
+ 1. Create a field on Account named "Number of Contacts". Populate this field with the number of contacts related to an account.
+
+For this we can were going to write triger, because contact is not necessary to have an account to choose for roll up summary functionality.
+
+step 1: Create an number field in account object with label  as Number of Contacts and APi name is Number_of_Contacts__c.
+Step 2: Use an existing trigger on contact if is present or create new trigger on contact.
+Step 3: Write our logic in trigger handler which will be called in after update and after insert of contact record.
+Step 4 : updat the Number of Contacts value based on records availability under that account.
+
+Writing trigger on contact(assuming custom trigger is not present)
+trigger ContactTrigger on Contact(after insert, after update){
+  if(trigger.isAfter){
+      if(trigger.isUpdate){
+          contactTriggerHandler.afterUpdate(trigger.oldMap.values(),trigger.newMap.values());
+      }
+      if(trigger.isInsert){
+          contactTriggerHandler.afterInsert(Trigger.newMap.values());
+      }
+  }
+}
+
+
+ 2. Build a basic lightning component that can query a list of 10 most recently created accounts and display it using a lightning app. 
+
+ 3. Make a basic http callout and print the result using system.debug
